@@ -48,6 +48,7 @@
         var engine = null;
         var scene = null;
         var sceneToRender = null;
+
         var createDefaultEngine = function () {
             return new BABYLON.Engine(canvas, true, {
                 preserveDrawingBuffer: true,
@@ -60,13 +61,49 @@
 
             scene = new BABYLON.Scene(engine);
 
-            // Colocar funções 
-            createCamera();
-
-            createLights();
+            createScenery();
 
             return scene;
         };
+
+        /* INSTRUÇÕES DA APLICAÇÃO
+
+        LINK CANVAS: https://facens.instructure.com/courses/6504/assignments/52689?module_item_id=199482
+
+        1. Crie um terreno usando a técnica de mapeamento HighMap. 
+        A área útil do player deve ser em um formato circular.
+
+        2. Use um SkyBox. Use o skybox 4 (ver assets).
+
+        3. Carregue o modelo do exemplo para ser o player : https://playground.babylonjs.com/#AHQEIB#17 (Links para um site externo.)
+
+        4. Use as animações disponíveis no modelo quando o player se mover pela cena, similar a esse exemplo: 
+        https://playground.babylonjs.com/#AHQEIB#17 (Links para um site externo.)
+
+        5. Carregue pelo menos 7 meshs diferentes para compor o seu cenário.
+
+        6.  Não permitir que o player saia da área útil.
+
+        7. Todas as vezes que o player encostar no modelo "ExplodingBarrel.glb", gere uma explosão usando partículas, 
+        dispare um áudio de explosão e remova o barril da cena.
+
+        8. Acrescente no cenário 10 itens que serão coletados pelo player em uma ordem correta determinada por você.  
+        Dessa forma o player não poderá coletar o item 2 se não tiver coletado o item 1, por exemplo. Identifique a ordem dos itens de alguma 
+        forma, por exemplo, tamanho ou textura.
+
+        9. Todas as vezes que um item for coletado, disparar uma animação, disparar um  áudio e  remover o item da cena.
+
+        10. Quanto todos os itens forem coletados, finalizar a aplicação "Fim de Jogo" executando a animação "Samba". 
+        Colocar uma opção para reiniciar o jogo. Coloque um placar para mostrar a quantidade de itens coletados.
+
+        */
+
+        const createScenery = function () {
+            createCamera();
+            createLights();
+            createGround();
+            createSkybox();
+        }
 
         const createCamera = function () {
             const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 4.3, 15, new BABYLON
@@ -79,7 +116,31 @@
             var light2 = new BABYLON.PointLight("light2", new BABYLON.Vector3(-15, 10, 0), scene);
         };
 
-        //#region Código Padrão
+        const createGround = function () {
+            var groundMaterial = new BABYLON.StandardMaterial("ground", scene);
+            groundMaterial.emissiveTexture = new BABYLON.Texture("assets/ground_texture.jpg", scene);
+
+            var ground = BABYLON.Mesh.CreateGroundFromHeightMap("ground", "assets/ground_heighmap.jpg",
+                800,
+                800, 250, 0, 10, scene, false);
+            ground.material = groundMaterial;
+        }
+
+        const createSkybox = function () {
+            var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {
+                size: 1000.0
+            }, scene);
+            var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+            skyboxMaterial.backFaceCulling = false;
+            skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("assets/textures/skybox4", scene);
+            skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+            skyboxMaterial.diffuseColor = BABYLON.Color3.Black()
+            skyboxMaterial.specularColor = BABYLON.Color3.Black();
+            skybox.material = skyboxMaterial;
+            skybox.position.y += 20;
+        }
+
+        //#region engine config
         var engine;
         var scene;
         initFunction = async function () {
