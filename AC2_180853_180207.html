@@ -45,6 +45,8 @@
     <script>
         var canvas = document.getElementById("renderCanvas");
 
+        var inputMap = null;
+        var camera1 = null;
         var engine = null;
         var scene = null;
         var sceneToRender = null;
@@ -109,12 +111,12 @@
         }
 
         const createCamera = function () {
-            var camera1 = new BABYLON.ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(
-                0, 40, 25), scene);
+            camera1 = new BABYLON.ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(
+                0, 10, 50), scene);
             scene.activeCamera = camera1;
             scene.activeCamera.attachControl(canvas, true);
-            camera1.lowerRadiusLimit = 2;
-            camera1.upperRadiusLimit = 10;
+            camera1.lowerRadiusLimit = 50;
+            camera1.upperRadiusLimit = 80;
             camera1.wheelDeltaPercentage = 0.01;
         };
 
@@ -135,6 +137,7 @@
                 800,
                 800, 250, 0, 10, scene, false);
             ground.material = groundMaterial;
+            ground.position.y -= 10;
         }
 
         const createSkybox = function () {
@@ -167,7 +170,7 @@
 
         const keyboardEvents = function () {
             // Keyboard events
-            var inputMap = {};
+            inputMap = {};
             scene.actionManager = new BABYLON.ActionManager(scene);
             scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger,
                 function (evt) {
@@ -185,7 +188,6 @@
                 function (newMeshes, particleSystems, skeletons, animationGroups) {
                     var hero = newMeshes[0];
 
-                    hero.position.y += 10;
                     //Scale the model down        
                     hero.scaling.scaleInPlace(0.6);
 
@@ -193,8 +195,8 @@
                     camera1.target = hero;
 
                     //Hero character variables 
-                    var heroSpeed = 0.03;
-                    var heroSpeedBackwards = 0.01;
+                    var heroSpeed = 0.3;
+                    var heroSpeedBackwards = 0.1;
                     var heroRotationSpeed = 0.1;
 
                     var animating = true;
@@ -282,7 +284,6 @@
             if (!engine) throw 'engine should not be null.';
             scene = createScene();
         };
-
         initFunction().then(() => {
             sceneToRender = scene
             engine.runRenderLoop(function () {
