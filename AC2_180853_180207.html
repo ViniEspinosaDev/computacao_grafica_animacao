@@ -72,19 +72,19 @@
 
         LINK CANVAS: https://facens.instructure.com/courses/6504/assignments/52689?module_item_id=199482
 
-        1. Crie um terreno usando a técnica de mapeamento HighMap. 
-        A área útil do player deve ser em um formato circular.
+        (/)1. Crie um terreno usando a técnica de mapeamento HighMap. 
+        A área útil do player deve ser em um formato circular. (FEITO)
 
-        2. Use um SkyBox. Use o skybox 4 (ver assets).
+        (/)2. Use um SkyBox. Use o skybox 4 (ver assets). (FEITO)
 
-        3. Carregue o modelo do exemplo para ser o player : https://playground.babylonjs.com/#AHQEIB#17 (Links para um site externo.)
+        (/)3. Carregue o modelo do exemplo para ser o player : https://playground.babylonjs.com/#AHQEIB#17 (Links para um site externo.) (FEITO)
 
-        4. Use as animações disponíveis no modelo quando o player se mover pela cena, similar a esse exemplo: 
-        https://playground.babylonjs.com/#AHQEIB#17 (Links para um site externo.)
+        (/)4. Use as animações disponíveis no modelo quando o player se mover pela cena, similar a esse exemplo: 
+        https://playground.babylonjs.com/#AHQEIB#17 (Links para um site externo.) (FEITO)
 
         5. Carregue pelo menos 7 meshs diferentes para compor o seu cenário.
 
-        6.  Não permitir que o player saia da área útil.
+        (/)6.  Não permitir que o player saia da área útil. (FEITO)
 
         7. Todas as vezes que o player encostar no modelo "ExplodingBarrel.glb", gere uma explosão usando partículas, 
         dispare um áudio de explosão e remova o barril da cena.
@@ -182,12 +182,47 @@
                 }));
         }
 
+        const calculateEllipse = function (x, z, xRay, zRay, xMid, zMid) {
+            return (Math.pow(x - xMid, 2) / Math.pow(xRay, 2)) +
+                (Math.pow(z - zMid, 2) / Math.pow(zRay, 2));
+        }
+
+        const validateHeroPosition = function (hero, heroSpeed) {
+
+            const maxX = 109,
+                minX = -110,
+                maxZ = 62,
+                minZ = -90;
+
+            var lookingFor = hero.forward.scaleInPlace(heroSpeed);
+            var lookZNegative = lookingFor.z < 0 ? -1 : 1;
+            var lookXNegative = lookingFor.x < 0 ? -1 : 1;
+
+            var heroPositionZAfterWalk = hero.position.z + heroSpeed * lookZNegative;
+            var heroPositionXAfterWalk = hero.position.x + heroSpeed * lookXNegative;
+
+            var xRay = (maxX + (minX * -1)) / 2;
+            var zRay = (maxZ + (minZ * -1)) / 2;
+
+            var xMid = maxX - xRay;
+            var zMid = maxZ - zRay;
+
+            var result = calculateEllipse(heroPositionXAfterWalk, heroPositionZAfterWalk, xRay, zRay, xMid, zMid);
+
+            var pointOutLimit = result > 1;
+
+            if (pointOutLimit)
+                return true;
+
+            return false;
+        }
+
         const caracterManager = function () {
             // Load hero character
-            BABYLON.SceneLoader.ImportMesh("", "https://assets.babylonjs.com/meshes/", "HVGirl.glb", scene,
+            BABYLON.SceneLoader.ImportMesh("", "https://assets.babylonjs.com/meshes/", "HVGirl.glb",
+                scene,
                 function (newMeshes, particleSystems, skeletons, animationGroups) {
                     var hero = newMeshes[0];
-
                     //Scale the model down        
                     hero.scaling.scaleInPlace(0.6);
 
@@ -211,11 +246,19 @@
                         var keydown = false;
                         //Manage the movements of the character (e.g. position, direction)
                         if (inputMap["w"]) {
-                            hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));
+                            if (validateHeroPosition(hero, heroSpeed))
+                                return;
+
+                            hero.moveWithCollisions(hero.forward.scaleInPlace(
+                                heroSpeed));
                             keydown = true;
                         }
                         if (inputMap["s"]) {
-                            hero.moveWithCollisions(hero.forward.scaleInPlace(-heroSpeedBackwards));
+                            if (validateHeroPosition(hero, -heroSpeed))
+                                return;
+
+                            hero.moveWithCollisions(hero.forward.scaleInPlace(-
+                                heroSpeedBackwards));
                             keydown = true;
                         }
                         if (inputMap["a"]) {
@@ -236,21 +279,25 @@
                                 animating = true;
                                 if (inputMap["s"]) {
                                     //Walk backwards
-                                    walkBackAnim.start(true, 1.0, walkBackAnim.from, walkBackAnim.to,
+                                    walkBackAnim.start(true, 1.0, walkBackAnim.from,
+                                        walkBackAnim.to,
                                         false);
                                 } else if (inputMap["b"]) {
                                     //Samba!
-                                    sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim.to, false);
+                                    sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim
+                                        .to, false);
                                 } else {
                                     //Walk
-                                    walkAnim.start(true, 1.0, walkAnim.from, walkAnim.to, false);
+                                    walkAnim.start(true, 1.0, walkAnim.from, walkAnim
+                                        .to, false);
                                 }
                             }
                         } else {
 
                             if (animating) {
                                 //Default animation is idle when no key is down     
-                                idleAnim.start(true, 1.0, idleAnim.from, idleAnim.to, false);
+                                idleAnim.start(true, 1.0, idleAnim.from, idleAnim.to,
+                                    false);
 
                                 //Stop all animations besides Idle Anim when no key is down
                                 sambaAnim.stop();
