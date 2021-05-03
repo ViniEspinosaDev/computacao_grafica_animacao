@@ -45,6 +45,8 @@
     <script>
         var canvas = document.getElementById("renderCanvas");
 
+        var andou = false;
+        var hero = null;
         var inputMap = null;
         var camera1 = null;
         var engine = null;
@@ -98,6 +100,8 @@
         10. Quanto todos os itens forem coletados, finalizar a aplicação "Fim de Jogo" executando a animação "Samba". 
         Colocar uma opção para reiniciar o jogo. Coloque um placar para mostrar a quantidade de itens coletados.
 
+        PARA COLOCAR MUSIQUINHA DE FUNDO: https://playground.babylonjs.com/#SFCC74#3
+
         */
 
         const createScenery = function () {
@@ -108,9 +112,11 @@
             createGUI();
             keyboardEvents();
             caracterManager();
+            createAllBarrel();
         }
 
         const createCamera = function () {
+            scene.collisionsEnabled = true;
             camera1 = new BABYLON.ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(
                 0, 10, 50), scene);
             scene.activeCamera = camera1;
@@ -118,6 +124,7 @@
             camera1.lowerRadiusLimit = 50;
             camera1.upperRadiusLimit = 80;
             camera1.wheelDeltaPercentage = 0.01;
+            camera1.checkCollision = true;
         };
 
         const createLights = function () {
@@ -222,7 +229,9 @@
             BABYLON.SceneLoader.ImportMesh("", "https://assets.babylonjs.com/meshes/", "HVGirl.glb",
                 scene,
                 function (newMeshes, particleSystems, skeletons, animationGroups) {
-                    var hero = newMeshes[0];
+                    hero = newMeshes[0];
+                    hero.checkCollision = true;
+
                     //Scale the model down        
                     hero.scaling.scaleInPlace(0.6);
 
@@ -244,28 +253,31 @@
                     //Rendering loop (executed for everyframe)
                     scene.onBeforeRenderObservable.add(() => {
                         var keydown = false;
+
                         //Manage the movements of the character (e.g. position, direction)
                         if (inputMap["w"]) {
+                            andou = true;
                             if (validateHeroPosition(hero, heroSpeed))
                                 return;
-
                             hero.moveWithCollisions(hero.forward.scaleInPlace(
                                 heroSpeed));
                             keydown = true;
                         }
                         if (inputMap["s"]) {
-                            if (validateHeroPosition(hero, -heroSpeed))
+                            andou = true;
+                            if (validateHeroPosition(hero, heroSpeed))
                                 return;
-
                             hero.moveWithCollisions(hero.forward.scaleInPlace(-
                                 heroSpeedBackwards));
                             keydown = true;
                         }
                         if (inputMap["a"]) {
+                            andou = true;
                             hero.rotate(BABYLON.Vector3.Up(), -heroRotationSpeed);
                             keydown = true;
                         }
                         if (inputMap["d"]) {
+                            andou = true;
                             hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
                             keydown = true;
                         }
@@ -310,6 +322,92 @@
                         }
                     });
                 });
+        }
+
+        const createAllBarrel = function () {
+            const barrelPosition = [{
+                x: 15,
+                z: 20
+            }, {
+                x: 41,
+                z: 13
+            }, {
+                x: 28,
+                z: 41
+            }, {
+                x: 39,
+                z: -6
+            }, {
+                x: -20,
+                z: 36
+            }, {
+                x: 15,
+                z: -14
+            }, {
+                x: -30,
+                z: -13
+            }, {
+                x: -21,
+                z: -13
+            }, {
+                x: -9,
+                z: -41
+            }, {
+                x: -40,
+                z: -6
+            }, {
+                x: 58,
+                z: -36
+            }, {
+                x: -15,
+                z: -14
+            }];
+
+            for (var i = 0; i < 12; i++) {
+                createBarrel(barrelPosition[i]);
+            }
+        }
+
+        const createBarrel = function (barrelPos) {
+            BABYLON.SceneLoader.ImportMesh(
+                "",
+                "https://models.babylonjs.com/",
+                "ExplodingBarrel.glb",
+                scene,
+                function (meshes, animationGroups) {
+                    const barrel = meshes[0];
+
+                    const cylinderName = `cylinder${barrelPos.x}${barrelPos.z}`;
+                    const cylinder = BABYLON.MeshBuilder.CreateCylinder(
+                        `cylinder${barrelPos.x}${barrelPos.z}`, {});
+
+                    //barrel.checkCollision = true;
+
+                    //Scale the model down        
+                    barrel.scaling.scaleInPlace(0.1);
+                    barrel.position.x += barrelPos.x;
+                    barrel.position.z += barrelPos.z;
+                    cylinder.position.x += barrelPos.x;
+                    cylinder.position.z += barrelPos.z;
+                    cylinder.position.y += 3;
+                    cylinder.scaling.scaleInPlace(4);
+
+                    //Rendering loop (executed for everyframe)
+                    scene.onBeforeRenderObservable.add(() => {
+                        var keydown = false;
+
+                        if (cylinder.intersectsMesh(hero, true)) {
+                            if (andou) {
+                                doBarrelExplosion(barrel, cylinder);
+                            }
+                        }
+                    });
+                });
+        }
+
+        const doBarrelExplosion = function (barrel, cylinder) {
+            barrel.dispose();
+            cylinder.dispose();
         }
 
         //#region engine config
