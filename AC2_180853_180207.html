@@ -88,8 +88,8 @@
 
         (/)6.  Não permitir que o player saia da área útil. (FEITO)
 
-        7. Todas as vezes que o player encostar no modelo "ExplodingBarrel.glb", gere uma explosão usando partículas, 
-        dispare um áudio de explosão e remova o barril da cena.
+        (/)7. Todas as vezes que o player encostar no modelo "ExplodingBarrel.glb", gere uma explosão usando partículas, 
+        dispare um áudio de explosão e remova o barril da cena. (FEITO)
 
         8. Acrescente no cenário 10 itens que serão coletados pelo player em uma ordem correta determinada por você.  
         Dessa forma o player não poderá coletar o item 2 se não tiver coletado o item 1, por exemplo. Identifique a ordem dos itens de alguma 
@@ -361,9 +361,18 @@
             }, {
                 x: -15,
                 z: -14
+            }, {
+                x: -30,
+                z: -55
+            }, {
+                x: 0,
+                z: 45
+            }, {
+                x: 100,
+                z: 0
             }];
 
-            for (var i = 0; i < 12; i++) {
+            for (var i = 0; i < 15; i++) {
                 createBarrel(barrelPosition[i]);
             }
         }
@@ -381,8 +390,6 @@
                     const cylinder = BABYLON.MeshBuilder.CreateCylinder(
                         `cylinder${barrelPos.x}${barrelPos.z}`, {});
 
-                    //barrel.checkCollision = true;
-
                     //Scale the model down        
                     barrel.scaling.scaleInPlace(0.1);
                     barrel.position.x += barrelPos.x;
@@ -392,13 +399,15 @@
                     cylinder.position.y += 3;
                     cylinder.scaling.scaleInPlace(4);
 
+                    var boom = false;
                     //Rendering loop (executed for everyframe)
                     scene.onBeforeRenderObservable.add(() => {
-                        var keydown = false;
-
-                        if (cylinder.intersectsMesh(hero, true)) {
-                            if (andou) {
-                                doBarrelExplosion(barrel, cylinder);
+                        if (!boom) {
+                            if (cylinder.intersectsMesh(hero, true)) {
+                                if (andou) {
+                                    doBarrelExplosion(barrel, cylinder);
+                                    boom = true;
+                                }
                             }
                         }
                     });
@@ -406,8 +415,40 @@
         }
 
         const doBarrelExplosion = function (barrel, cylinder) {
+            var vetor3 = barrel.position;
+
+            // Make explosion sound
+            const bounce = new BABYLON.Sound("bounce", "./assets/sounds/barulho_explosao.mp3", scene,
+                null, {
+                    loop: false,
+                    autoplay: true
+                });
+
+            // Generate particules
+            particulesGenerator(vetor3);
+
+            // exclude barrel
             barrel.dispose();
             cylinder.dispose();
+        }
+
+        const particulesGenerator = function (vector3) {
+
+            var count = 0;
+            BABYLON.ParticleHelper.CreateAsync("explosion", scene).then((set) => {
+                set.systems.forEach(s => {
+                    s.emitter = vector3;
+                    s.disposeOnStop = true;
+                });
+                set.start();
+            });
+            BABYLON.ParticleHelper.CreateAsync("fire", scene, false).then((set) => {
+                set.systems.forEach(s => {
+                    s.emitter = new BABYLON.Vector3(vector3.x, 2.5, vector3.z);
+                    s.disposeOnStop = true;
+                });
+                set.start();
+            });
         }
 
         //#region engine config
