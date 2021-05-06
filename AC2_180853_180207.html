@@ -95,7 +95,7 @@
         Dessa forma o player não poderá coletar o item 2 se não tiver coletado o item 1, por exemplo. Identifique a ordem dos itens de alguma 
         forma, por exemplo, tamanho ou textura.
 
-        (/)9. Todas as vezes que um item for coletado, disparar uma animação, disparar um  áudio e  remover o item da cena.
+        (/)9. Todas as vezes que um item for coletado, disparar uma animação, disparar um  áudio e  remover o item da cena.(FEITO)
 
         10. Quanto todos os itens forem coletados, finalizar a aplicação "Fim de Jogo" executando a animação "Samba". 
         Colocar uma opção para reiniciar o jogo. Coloque um placar para mostrar a quantidade de itens coletados.
@@ -264,6 +264,9 @@
                                 heroSpeed));
                             keydown = true;
                         }
+                        if (inputMap["f"]) {
+                            console.log("x: " + hero.position.x + " z: " + hero.position.z);
+                        }
                         if (inputMap["s"]) {
                             andou = true;
                             if (validateHeroPosition(hero, heroSpeed))
@@ -418,51 +421,117 @@
 
         const createAllCollects = function () {
             var coords = [{
-                x: 5,
-                z: 3
+                x: -62,
+                z: -39, //0
+                y: 3
             }, {
                 x: 49,
-                z: 3
+                z: 3, //1
+                y: 3
             }, {
                 x: -100,
-                z: 3
+                z: 3, //2
+                y: 3
             }, {
-                x: -70,
-                z: 29
+                x: -35,
+                z: -9, //3
+                y: 3
             }, {
                 x: 70,
-                z: 40
-            }, {
-                x: 14,
-                z: 15
-            }, {
-                x: -22,
-                z: -21
-            }, {
-                x: -66,
-                z: 78
+                z: 40, //4
+                y: 3
             }, {
                 x: 78,
-                z: 25
+                z: -64, //5
+                y: 3
+            }, {
+                x: -22,
+                z: -21, //6
+                y: 3
+            }, {
+                x: -22,
+                z: -85, //7
+                y: 3
+            }, {
+                x: 24,
+                z: -59, //8
+                y: 3
             }, {
                 x: 0,
-                z: 33
+                z: 33, //9
+                y: 3
             }];
-
+            // createCollect(coords[5], "rectangle", "", 0.000005);
+            // createCollect(coords[6], "ball", "", 6);
+            // createCollect(coords[7], "plane", "", 6);
+            // createCollect(coords[8], "square", "", 6);
+            // createCollect(coords[9], "cylinder", "", 4);
+            createCollect(coords[5], "rectangle", "", 1);
+            createCollect(coords[6], "ball", "", 6);
+            createCollect(coords[7], "plane", "", 6);
+            createCollect(coords[8], "square", "", 3);
+            createCollect(coords[9], "cylinder", "", 4);
             createCollect(coords[0], "alien.glb", "https://models.babylonjs.com/", 6);
             createCollect(coords[1], "dragon.babylon", "https://models.babylonjs.com/Georgia-Tech-Dragon/", 26);
             createCollect(coords[2], "aerobatic_plane.glb", "https://models.babylonjs.com/", 26);
             createCollect(coords[3], "ufo.glb", "assets/scene/", 6);
             createCollect(coords[4], "skull.babylon", "assets/scene/", 0.06);
-            createCollect(coords[5], "rectangle", "", 0.000005);
-            createCollect(coords[6], "ball", "", 6);
-            createCollect(coords[7], "plane", "", 6);
-            createCollect(coords[8], "square", "", 6);
-            createCollect(coords[9], "cylinder", "", 2);
+
         }
 
         const createGeometric = function (coord, name, scale) {
-            // criar objeto geometrico pelo nome, fazer um switch case, escolher cor, observar colisões
+            var collect = null;
+
+            switch (name) {
+                case "rectangle":
+                    collect = BABYLON.MeshBuilder.CreateBox(name, {
+                        width: 8,
+                        height: 4,
+                        depth: 2
+                    }, scene);
+                    break;
+                case "ball":
+                    collect = BABYLON.MeshBuilder.CreateSphere(name, {}, scene);
+                    break;
+                case "plane":
+                    collect = BABYLON.MeshBuilder.CreateBox(name, {
+                        width: 1,
+                        height: 1,
+                        depth: 0.1
+                    }, scene);
+                    break;
+                case "square":
+                    collect = BABYLON.MeshBuilder.CreateBox(name, {}, scene);
+                    break;
+                case "cylinder":
+                    collect = BABYLON.MeshBuilder.CreateCylinder(name, {}, scene);
+                    break;
+            }
+
+            collect.position.x = coord.x;
+            collect.position.y = coord.y;
+            collect.position.z = coord.z;
+            collect.scaling.scaleInPlace(scale);
+            const collectBody = BABYLON.MeshBuilder.CreateCylinder(
+                `collectBody${coord.x}${coord.z}`, {});
+
+            collectBody.position.x = coord.x;
+            collectBody.position.z = coord.z;
+            collectBody.position.y = 1;
+            collectBody.scaling.scaleInPlace(4);
+            collectBody.isVisible = false;
+            var collected = false;
+            scene.onBeforeRenderObservable.add(() => {
+                if (!collected) {
+                    if (andou) {
+                        if (collectBody.intersectsMesh(hero, true)) {
+                            doCollectEffects(collect, collectBody);
+                            collected = true;
+
+                        }
+                    }
+                }
+            });
         }
 
         const createCollect = function (coord, name, url, scale) {
