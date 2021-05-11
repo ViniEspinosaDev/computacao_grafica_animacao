@@ -45,7 +45,14 @@
     <script>
         var canvas = document.getElementById("renderCanvas");
 
-        var andou = false;
+        var messageHint;
+        var advancedTextureColletableCount;
+        var advancedTextureHint;
+        var collectChanged = true;
+        var indexOrderCollectable = 0;
+        var win = false;
+        var collectableCount = 10;
+        var walked = false;
         var hero = null;
         var inputMap = null;
         var camera1 = null;
@@ -91,14 +98,14 @@
         (/)7. Todas as vezes que o player encostar no modelo "ExplodingBarrel.glb", gere uma explosão usando partículas, 
         dispare um áudio de explosão e remova o barril da cena. (FEITO)
 
-        8. Acrescente no cenário 10 itens que serão coletados pelo player em uma ordem correta determinada por você.  
+        (/)8. Acrescente no cenário 10 itens que serão coletados pelo player em uma ordem correta determinada por você.  
         Dessa forma o player não poderá coletar o item 2 se não tiver coletado o item 1, por exemplo. Identifique a ordem dos itens de alguma 
-        forma, por exemplo, tamanho ou textura.
+        forma, por exemplo, tamanho ou textura.(FEITO)
 
         (/)9. Todas as vezes que um item for coletado, disparar uma animação, disparar um  áudio e  remover o item da cena.(FEITO)
 
-        10. Quanto todos os itens forem coletados, finalizar a aplicação "Fim de Jogo" executando a animação "Samba". 
-        Colocar uma opção para reiniciar o jogo. Coloque um placar para mostrar a quantidade de itens coletados.
+        (/)10. Quanto todos os itens forem coletados, finalizar a aplicação "Fim de Jogo" executando a animação "Samba". 
+        Colocar uma opção para reiniciar o jogo. Coloque um placar para mostrar a quantidade de itens coletados.(FEITO)
 
         PARA COLOCAR MUSIQUINHA DE FUNDO: https://playground.babylonjs.com/#SFCC74#3
 
@@ -113,7 +120,8 @@
             keyboardEvents();
             caracterManager();
             createAllBarrel();
-            createAllCollects();
+            createAllCollectable();
+            createCounterColletableHUB();
         }
 
         const createCamera = function () {
@@ -165,15 +173,25 @@
         const createGUI = function () {
             // GUI
             var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-            var instructions = new BABYLON.GUI.TextBlock();
 
-            instructions.text = "Move w/ WASD keys, B for Samba, look with the mouse";
-            instructions.color = "white";
-            instructions.fontSize = 16;
-            instructions.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT
-            instructions.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM
+            var instructions = generateMessageUI(
+                "AC2 - Vinícius Espinosa de Oliveira - 180853 & Samuel Ferraz de Araujo - 180207", BABYLON.GUI
+                .Control
+                .HORIZONTAL_ALIGNMENT_CENTER, BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP);
 
             advancedTexture.addControl(instructions);
+        }
+
+        const generateMessageUI = function (text, horizontal, vertical) {
+            var instructions = new BABYLON.GUI.TextBlock();
+
+            instructions.text = text;
+            instructions.color = "green";
+            instructions.fontSize = 20;
+            instructions.textHorizontalAlignment = horizontal;
+            instructions.textVerticalAlignment = vertical;
+
+            return instructions;
         }
 
         const keyboardEvents = function () {
@@ -226,20 +244,16 @@
         }
 
         const caracterManager = function () {
-            // Load hero character
             BABYLON.SceneLoader.ImportMesh("", "https://assets.babylonjs.com/meshes/", "HVGirl.glb",
                 scene,
                 function (newMeshes, particleSystems, skeletons, animationGroups) {
                     hero = newMeshes[0];
                     hero.checkCollision = true;
 
-                    //Scale the model down        
                     hero.scaling.scaleInPlace(0.6);
 
-                    //Lock camera on the character 
                     camera1.target = hero;
 
-                    //Hero character variables 
                     var heroSpeed = 0.3;
                     var heroSpeedBackwards = 0.1;
                     var heroRotationSpeed = 0.1;
@@ -251,59 +265,113 @@
                     const idleAnim = scene.getAnimationGroupByName("Idle");
                     const sambaAnim = scene.getAnimationGroupByName("Samba");
 
-                    //Rendering loop (executed for everyframe)
                     scene.onBeforeRenderObservable.add(() => {
                         var keydown = false;
+                        var colle = "";
+                        if (collectChanged) {
+                            switch (indexOrderCollectable) {
+                                case 0:
+                                    messageHint = "Colete a nave espacial";
+                                    break;
+                                case 1:
+                                    messageHint = "Colete o dragão";
+                                    break;
+                                case 2:
+                                    messageHint = "Colete a aviãozinho";
+                                    break;
+                                case 3:
+                                    messageHint = "Colete o alien";
+                                    break;
+                                case 4:
+                                    messageHint = "Colete a caveira";
+                                    break;
+                                case 5:
+                                    messageHint = "Colete o retangulo azul";
+                                    break;
+                                case 6:
+                                    messageHint = "Colete a esfera vermelha";
+                                    break;
+                                case 7:
+                                    messageHint = "Colete o plano rosa";
+                                    break;
+                                case 8:
+                                    messageHint = "Colete o cubo amarelo";
+                                    break;
+                                case 9:
+                                    messageHint = "Colete o cilindro preto";
+                                    break;
+                                case 10:
+                                    messageHint = "";
+                            }
+                            colle = indexOrderCollectable + 1;
+                            var message = colle + ". " + messageHint;
 
-                        //Manage the movements of the character (e.g. position, direction)
-                        if (inputMap["w"]) {
-                            andou = true;
+                            if (indexOrderCollectable >= 10)
+                                message = "PARA REINICIAR APERTE 'R'";
+
+                            createHintCollectableHUB(message);
+                            collectChanged = false;
+                        }
+
+                        var existCollectableYet = collectableCount > 0;
+
+                        if (inputMap["w"] && existCollectableYet) {
+                            walked = true;
                             if (validateHeroPosition(hero, heroSpeed))
                                 return;
                             hero.moveWithCollisions(hero.forward.scaleInPlace(
                                 heroSpeed));
                             keydown = true;
                         }
-                        if (inputMap["f"]) {
-                            console.log("x: " + hero.position.x + " z: " + hero.position.z);
-                        }
-                        if (inputMap["s"]) {
-                            andou = true;
+                        if (inputMap["s"] && existCollectableYet) {
+                            walked = true;
                             if (validateHeroPosition(hero, heroSpeed))
                                 return;
                             hero.moveWithCollisions(hero.forward.scaleInPlace(-
                                 heroSpeedBackwards));
                             keydown = true;
                         }
-                        if (inputMap["a"]) {
-                            andou = true;
+                        if (inputMap["a"] && existCollectableYet) {
+                            walked = true;
                             hero.rotate(BABYLON.Vector3.Up(), -heroRotationSpeed);
                             keydown = true;
                         }
-                        if (inputMap["d"]) {
-                            andou = true;
+                        if (inputMap["d"] && existCollectableYet) {
+                            walked = true;
                             hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
                             keydown = true;
                         }
-                        if (inputMap["b"]) {
+                        if (inputMap["r"] && indexOrderCollectable == 10) {
+                            restartGame();
+                        }
+                        if (!existCollectableYet) {
                             keydown = true;
+                            animating = false;
+                            if (keydown) {
+                                if (!animating && !win) {
+                                    animating = true;
+                                    win = true;
+                                    sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim
+                                        .to, false);
+
+                                    const bounce = new BABYLON.Sound("bounce",
+                                        "./assets/sounds/Globeleza_carnavraul.mp3", scene,
+                                        null, {
+                                            loop: false,
+                                            autoplay: true
+                                        });
+                                }
+                            }
                         }
 
-                        //Manage animations to be played  
                         if (keydown) {
                             if (!animating) {
                                 animating = true;
                                 if (inputMap["s"]) {
-                                    //Walk backwards
                                     walkBackAnim.start(true, 1.0, walkBackAnim.from,
                                         walkBackAnim.to,
                                         false);
-                                } else if (inputMap["b"]) {
-                                    //Samba!
-                                    sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim
-                                        .to, false);
                                 } else {
-                                    //Walk
                                     walkAnim.start(true, 1.0, walkAnim.from, walkAnim
                                         .to, false);
                                 }
@@ -409,7 +477,7 @@
                     scene.onBeforeRenderObservable.add(() => {
                         if (!boom) {
                             if (cylinder.intersectsMesh(hero, true)) {
-                                if (andou) {
+                                if (walked) {
                                     doBarrelExplosion(barrel, cylinder);
                                     boom = true;
                                 }
@@ -419,64 +487,89 @@
                 });
         }
 
-        const createAllCollects = function () {
+        const createAllCollectable = function () {
             var coords = [{
+                id: 0,
                 x: -62,
                 z: -39, //0
-                y: 3
+                y: 3,
+                url: "assets/scene/",
+                name: "ufo.glb"
             }, {
+                id: 1,
                 x: 49,
                 z: 3, //1
-                y: 3
+                y: 3,
+                url: "https://models.babylonjs.com/Georgia-Tech-Dragon/",
+                name: "dragon.babylon"
             }, {
+                id: 2,
                 x: -100,
                 z: 3, //2
-                y: 3
+                y: 3,
+                url: "https://models.babylonjs.com/",
+                name: "aerobatic_plane.glb"
             }, {
+                id: 3,
                 x: -35,
                 z: -9, //3
-                y: 3
+                y: 3,
+                url: "https://models.babylonjs.com/",
+                name: "alien.glb"
             }, {
+                id: 4,
                 x: 70,
                 z: 40, //4
-                y: 3
+                y: 3,
+                url: "assets/scene/",
+                name: "skull.babylon"
             }, {
+                id: 5,
                 x: 78,
                 z: -64, //5
-                y: 3
+                y: 3,
+                url: "",
+                name: "rectangle"
             }, {
+                id: 6,
                 x: -22,
                 z: -21, //6
-                y: 3
+                y: 3,
+                url: "",
+                name: "ball"
             }, {
+                id: 7,
                 x: -22,
                 z: -85, //7
-                y: 3
+                y: 3,
+                url: "",
+                name: "plane"
             }, {
+                id: 8,
                 x: 24,
                 z: -59, //8
-                y: 3
+                y: 3,
+                url: "",
+                name: "square"
             }, {
+                id: 9,
                 x: 0,
                 z: 33, //9
-                y: 3
+                y: 3,
+                url: "",
+                name: "cylinder"
             }];
-            // createCollect(coords[5], "rectangle", "", 0.000005);
-            // createCollect(coords[6], "ball", "", 6);
-            // createCollect(coords[7], "plane", "", 6);
-            // createCollect(coords[8], "square", "", 6);
-            // createCollect(coords[9], "cylinder", "", 4);
+            //var order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
             createCollect(coords[5], "rectangle", "", 1);
             createCollect(coords[6], "ball", "", 6);
             createCollect(coords[7], "plane", "", 6);
             createCollect(coords[8], "square", "", 3);
             createCollect(coords[9], "cylinder", "", 4);
-            createCollect(coords[0], "alien.glb", "https://models.babylonjs.com/", 6);
+            createCollect(coords[3], "alien.glb", "https://models.babylonjs.com/", 6);
             createCollect(coords[1], "dragon.babylon", "https://models.babylonjs.com/Georgia-Tech-Dragon/", 26);
             createCollect(coords[2], "aerobatic_plane.glb", "https://models.babylonjs.com/", 26);
-            createCollect(coords[3], "ufo.glb", "assets/scene/", 6);
+            createCollect(coords[0], "ufo.glb", "assets/scene/", 6);
             createCollect(coords[4], "skull.babylon", "assets/scene/", 0.06);
-
         }
 
         const createGeometric = function (coord, name, scale) {
@@ -489,9 +582,11 @@
                         height: 4,
                         depth: 2
                     }, scene);
+                    collect.material = chooseCollor("blue");
                     break;
                 case "ball":
                     collect = BABYLON.MeshBuilder.CreateSphere(name, {}, scene);
+                    collect.material = chooseCollor("red");
                     break;
                 case "plane":
                     collect = BABYLON.MeshBuilder.CreateBox(name, {
@@ -499,12 +594,15 @@
                         height: 1,
                         depth: 0.1
                     }, scene);
+                    collect.material = chooseCollor("pink");
                     break;
                 case "square":
                     collect = BABYLON.MeshBuilder.CreateBox(name, {}, scene);
+                    collect.material = chooseCollor("yellow");
                     break;
                 case "cylinder":
                     collect = BABYLON.MeshBuilder.CreateCylinder(name, {}, scene);
+                    collect.material = chooseCollor("black");
                     break;
             }
 
@@ -523,15 +621,52 @@
             var collected = false;
             scene.onBeforeRenderObservable.add(() => {
                 if (!collected) {
-                    if (andou) {
+                    if (walked) {
                         if (collectBody.intersectsMesh(hero, true)) {
-                            doCollectEffects(collect, collectBody);
-                            collected = true;
-
+                            collected = doCollectEffects(collect, collectBody, coord.id);
                         }
                     }
                 }
             });
+        }
+
+        const chooseCollor = function (colorSpected) {
+            var color = new BABYLON.StandardMaterial("cor", scene);
+
+            switch (colorSpected) {
+                case "black":
+                    color.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                    break;
+                case "green":
+                    color.diffuseColor = new BABYLON.Color3(0, 1, 0);
+                    break;
+                case "brown":
+                    color.diffuseColor = new BABYLON.Color3(0.90, 0.76, 0.47);
+                    break;
+                case "yellow":
+                    color.diffuseColor = new BABYLON.Color3(1, 1, 0);
+                    break;
+                case "white":
+                    color.diffuseColor = new BABYLON.Color3(1, 1, 1);
+                    break;
+                case "red":
+                    color.diffuseColor = new BABYLON.Color3(1, 0, 0);
+                    break;
+                case "pink":
+                    color.diffuseColor = new BABYLON.Color3(0.95, 0, 1);
+                    break;
+                case "purple":
+                    color.diffuseColor = new BABYLON.Color3(0.55, 0.14, 1);
+                    break;
+                case "orange":
+                    color.diffuseColor = new BABYLON.Color3(0.90, 0.54, 0.01);
+                    break;
+                case "blue":
+                    color.diffuseColor = new BABYLON.Color3(0, 0, 1);
+                    break;
+            }
+
+            return color;
         }
 
         const createCollect = function (coord, name, url, scale) {
@@ -540,7 +675,7 @@
                 return;
             }
 
-            BABYLON.SceneLoader.ImportMesh("", url, name, scene, function (
+            BABYLON.SceneLoader.ImportMesh("", coord.url, coord.name, scene, function (
                 meshes) {
                 const collect = meshes[0];
                 collect.position.x = coord.x;
@@ -561,9 +696,8 @@
                 scene.onBeforeRenderObservable.add(() => {
                     if (!collected) {
                         if (collectBody.intersectsMesh(hero, true)) {
-                            if (andou) {
-                                doCollectEffects(collect, collectBody);
-                                collected = true;
+                            if (walked) {
+                                collected = doCollectEffects(collect, collectBody, coord.id);
                             }
                         }
                     }
@@ -571,18 +705,28 @@
             });
         }
 
-        const doCollectEffects = function (collect, collectBody) {
+        const doCollectEffects = function (collect, collectBody, id) {
+            var order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+            if (order[indexOrderCollectable] == id) {
+                // Make explosion sound
+                const bounce = new BABYLON.Sound("bounce", "./assets/sounds/gtasanandreas_1.mp3", scene,
+                    //const bounce = new BABYLON.Sound("bounce", "./assets/sounds/gtasanandreas_1.mp3", scene,
+                    null, {
+                        loop: false,
+                        autoplay: true
+                    });
 
-            // Make explosion sound
-            const bounce = new BABYLON.Sound("bounce", "./assets/sounds/gtasanandreas_1.mp3", scene,
-                //const bounce = new BABYLON.Sound("bounce", "./assets/sounds/gtasanandreas_1.mp3", scene,
-                null, {
-                    loop: false,
-                    autoplay: true
-                });
+                collectableCount--;
+                indexOrderCollectable++;
 
-            collect.dispose();
-            collectBody.dispose();
+                collect.dispose();
+                collectBody.dispose();
+
+                collectChanged = true;
+                createCounterColletableHUB();
+                return true;
+            }
+            return false;
         }
 
         const doBarrelExplosion = function (barrel, cylinder) {
@@ -590,7 +734,6 @@
 
             // Make explosion sound
             const bounce = new BABYLON.Sound("bounce", "./assets/sounds/barulho_explosao.mp3", scene,
-                //const bounce = new BABYLON.Sound("bounce", "./assets/sounds/gtasanandreas_1.mp3", scene,
                 null, {
                     loop: false,
                     autoplay: true
@@ -621,6 +764,101 @@
                 });
                 set.start();
             });
+        }
+
+        const createCounterColletableHUB = function () {
+
+            if (advancedTextureColletableCount) {
+                advancedTextureColletableCount.dispose();
+            }
+
+            advancedTextureColletableCount = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+            var topPanelD = new BABYLON.GUI.StackPanel();
+            topPanelD.width = "350px";
+            topPanelD.isVertical = true;
+            topPanelD.paddingLeft = "20px";
+            topPanelD.paddingTop = "20px";
+            topPanelD.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+            topPanelD.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+            topPanelD.fontSize = 20;
+            advancedTextureColletableCount.addControl(topPanelD);
+
+            var addHeader = function (text, panel, alinhamento) {
+                var header = new BABYLON.GUI.TextBlock();
+                header.text = text;
+                header.height = "30px";
+                header.color = "white";
+                header.outlineWidth = "4px";
+                header.outlineColor = "black";
+                header.textHorizontalAlignment = alinhamento;
+
+                panel.addControl(header);
+            }
+
+            var alinhamentoCentro = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+
+            addHeader(indexOrderCollectable + "/10", topPanelD, alinhamentoCentro);
+
+            return advancedTextureColletableCount;
+        }
+
+        const createHintCollectableHUB = function (message) {
+
+            if (advancedTextureHint) {
+                advancedTextureHint.dispose();
+            }
+
+            advancedTextureHint = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+            var topPanelD = new BABYLON.GUI.StackPanel();
+            topPanelD.width = "350px";
+            topPanelD.isVertical = true;
+            topPanelD.paddingLeft = "20px";
+            topPanelD.paddingTop = "20px";
+            topPanelD.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            topPanelD.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+            topPanelD.fontSize = 20;
+            advancedTextureHint.addControl(topPanelD);
+
+            var addHeader = function (text, panel, alinhamento) {
+                var header = new BABYLON.GUI.TextBlock();
+                header.text = text;
+                header.height = "30px";
+                header.color = "white";
+                header.outlineWidth = "4px";
+                header.outlineColor = "black";
+                header.textHorizontalAlignment = alinhamento;
+
+                panel.addControl(header);
+            }
+
+            var alinhamentoCentro = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+
+            addHeader(message, topPanelD, alinhamentoCentro);
+
+            return advancedTextureHint;
+        }
+
+        const restartGame = function () {
+            window.location.reload();
+            // messageHint = null;
+            // advancedTextureColletableCount = null;
+            // advancedTextureHint = null;
+            // collectChanged = true;
+            // indexOrderCollectable = 0;
+            // win = false;
+            // collectableCount = 10;
+            // walked = false;
+            // hero = null;
+            // inputMap = null;
+            // camera1 = null;
+            // engine = null;
+            // scene = null;
+            // sceneToRender = null;
+
+            // createScene();
+            // createScenery();
         }
 
         //#region engine config
